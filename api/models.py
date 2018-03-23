@@ -43,6 +43,14 @@ class Book(db.Model):
     category = db.Column(
         db.Integer, db.ForeignKey('category.id'), nullable=False)
 
+    def to_json(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "price": self.price,
+            "category": self.category,
+        }
+
     def __repr__(self):
         return '<Book %r>' % self.name
 
@@ -65,8 +73,15 @@ class Transaction(db.Model):
 
     total_price = synonym('_total_price', descriptor=total_price)
 
+    def to_json(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "price": self.price,
+            "category": self.category,
+            "total_price": self.total_price
+        }
+
+
     def __repr__(self):
         return '<Transaction %r>' % self.id
-
-
-# db_session.query(Table).filter(Table.name == 'bla')
