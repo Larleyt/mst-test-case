@@ -1,11 +1,12 @@
 from flask import (
     Blueprint,
     jsonify,
-    redirect,
     request
 )
 from flask.views import MethodView
+from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
+from . import db
 from .models import Book, Transaction
 
 
@@ -31,15 +32,29 @@ class BookAPI(MethodView):
 
 class TransactionAPI(MethodView):
     def post(self):
-        pass
+        if not request.is_json:
+            raise UnsupportedMediaType()
+
+        json_data = request.get_json()
+        books_ids = json_data["books_ids"]
+        user_id = json_data["user_id"]
+
+        if books_ids is None or user_id is None:
+            raise BadRequest()
+
+        t = Transaction(user_id=int(user_id))
+        t.books.extend(Book.query.filter(Book.id.in_(books_ids)).all())
+        t.set_total_price()
+
+        db.session.add(t)
+        db.session.commit()
+        return jsonify(t.to_json())
 
 
 api.add_url_rule(
     "/books",
-    view_func=BookAPI.as_view("books"),
-    methods=['GET']
+    view_func=BookAPI.as_view("books")
 )
 api.add_url_rule("/transactions",
-    view_func=TransactionAPI.as_view("transactions"),
-    methods=['POST']
+    view_func=TransactionAPI.as_view("transactions")
 )

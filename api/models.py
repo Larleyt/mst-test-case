@@ -18,11 +18,13 @@ books = db.Table('books',
     )
 )
 
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), nullable=False, unique=True,)
     email = db.Column(db.String(120), nullable=False, unique=True,)
     phone = db.Column(db.String(20), nullable=True)
+    transactions = db.relationship("Transaction", backref="user")
 
     def __repr__(self):
         return '<User %r>' % self.username
@@ -31,6 +33,13 @@ class User(db.Model):
 class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False, unique=True)
+    books = db.relationship("Book", backref="category")
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+        }
 
     def __repr__(self):
         return '<Category %r>' % self.name
@@ -40,7 +49,7 @@ class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False, unique=True)
     price = db.Column(db.Float, nullable=False)
-    category = db.Column(
+    category_id = db.Column(
         db.Integer, db.ForeignKey('category.id'), nullable=False)
 
     def to_json(self):
@@ -48,7 +57,7 @@ class Book(db.Model):
             "id": self.id,
             "name": self.name,
             "price": self.price,
-            "category": self.category,
+            "category": self.category.to_json(),
         }
 
     def __repr__(self):
@@ -57,31 +66,25 @@ class Book(db.Model):
 
 class Transaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user = db.Column(
+    user_id = db.Column(
         db.Integer, db.ForeignKey('user.id'), nullable=False)
     books = db.relationship('Book', secondary=books, lazy='subquery',
         backref=db.backref('transactions', lazy=True))
     _total_price = db.Column(db.Float, nullable=False)
 
-    @property
-    def total_price(self):
+    def get_total_price(self):
         return self._total_price
 
-    @total_price.setter
-    def total_price(self):
-        self._total_price = sum((book.price for book in self.books))
-
-    total_price = synonym('_total_price', descriptor=total_price)
+    def set_total_price(self):
+        self._total_price = sum((b.price for b in self.books))
 
     def to_json(self):
         return {
             "id": self.id,
-            "name": self.name,
-            "price": self.price,
-            "category": self.category,
-            "total_price": self.total_price
+            "books": [b.to_json() for b in self.books],
+            "user_id": self.user_id,
+            "total_price": self.get_total_price()
         }
-
 
     def __repr__(self):
         return '<Transaction %r>' % self.id
