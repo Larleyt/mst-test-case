@@ -15,17 +15,19 @@ api = Blueprint('api', __name__)
 
 class BookAPI(MethodView):
     def get(self):
-        price_gt = request.args.get('price_gt', 0)
-        price_lt = request.args.get('price_lt')
+        price_min = request.args.get('price_min', 0)
+        price_max = request.args.get('price_max')
         cat_id = request.args.get('cat_id')
 
-        query = Book.query.filter(
-            Book.price > price_gt
-        )
+        query = Book.query.filter(Book.price >= price_min)
+
         if cat_id is not None:
-            query = query.filter(Book.category == cat_id)
-        if price_lt is not None:
-            query = query.filter(Book.price < price_lt)
+            query = query.filter(Book.category_id == cat_id)
+
+        if price_max is not None:
+            if price_max < price_min:
+                raise BadRequest()
+            query = query.filter(Book.price <= price_max)
 
         return jsonify([b.to_json() for b in query.all()])
 
